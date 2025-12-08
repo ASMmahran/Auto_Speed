@@ -4,17 +4,23 @@
 using namespace std;
 
 // ============= Utility functions =============
-Parser::Parser(const vector<Token>& t) : tokens(t), pos(0) {}
+Parser::Parser(const vector<Token>& t)
+    : tokens(t), pos(0), semantics() {
+}   // ✅ semantic initialized
 
 Token Parser::current() {
     if (pos >= tokens.size()) return { END_OF_FILE, "EOF", -1 };
     return tokens[pos];
 }
 
-void Parser::advance() { if (pos < tokens.size()) pos++; }
+void Parser::advance() {
+    if (pos < tokens.size()) pos++;
+}
 
 bool Parser::match(TokenType t) {
-    if (current().type == t) { advance(); return true; }
+    if (current().type == t) {
+        advance(); return true;
+    }
     return false;
 }
 
@@ -24,13 +30,12 @@ void Parser::expect(TokenType t, const string& msg) {
 
 void Parser::error(const string& msg) {
     hasError = true;
-    cerr << "❌ Parse Error [Line " << current().line << "]: " << msg << endl;
-    // Attempt simple recovery: skip current token
-    advance();
+    cerr << " Parse Error [Line " << current().line << "]: " << msg << endl;
+    advance(); // simple recovery
 }
 
 void Parser::printNode(const string& label) {
-    cout << string(indentLevel * 2, ' ') << label << endl;
+    cout << string(indentLevel * 2, ' ') << "=> (" << label << ")" << endl;
 }
 
 // ============= Grammar rules =============
@@ -38,10 +43,13 @@ void Parser::printNode(const string& label) {
 void Parser::parse() {
     cout << " Starting Auto-Speed parse...\n";
     Program();
-    if (!hasError)
+
+    if (!hasError && !semantics.hasErrors())
         cout << " Parsing completed successfully!\n";
-    else
-        cout << " Parsing completed with errors.\n";
+    else {
+        if (hasError) cout << " Parsing completed with syntax errors.\n";
+        if (semantics.hasErrors()) cout << " Semantic errors were found.\n";
+    }
 }
 
 void Parser::Program() {
@@ -93,12 +101,26 @@ void Parser::FunctionList() {
 void Parser::Function() {
     printNode("Function");
     indentLevel++;
+
+    Token fnTok = current();
     string fname = current().value;
     advance(); // engine or ignite
-    if (fname == "engine" && current().type == IDENTIFIER)
-        advance();
+
+    // handle engine <name>
+    if (fname == "engine") {
+        if (current().type == IDENTIFIER) {
+            fname = current().value;
+            advance();
+        }
+    }
+
+    // parameters (your grammar has no params)
     expect(SYMBOL, "(");
     expect(SYMBOL, ")");
+
+    // REGISTER FUNCTION — semantics
+    semantics.declareFunction(fname, 0, fnTok);   // 0 params
+
     Block();
     indentLevel--;
 }
@@ -125,22 +147,36 @@ void Parser::Statement() {
     printNode("Statement");
     indentLevel++;
     string val = current().value;
+
     if (val == "announce") OutputStmt();
     else if (val == "listen") InputStmt();
     else if (val == "track") ConditionalStmt();
     else if (val == "looplap") LoopStmt();
     else if (val == "finishline") ReturnStmt();
     else if (current().type == KEYWORD) DeclarationStmt();
-    else if (current().type == IDENTIFIER) AssignmentStmt();
+
+    else if (current().type == IDENTIFIER) {
+        AssignmentStmt();
+    }
+
     else advance();
+
     indentLevel--;
 }
 
 void Parser::DeclarationStmt() {
     printNode("DeclarationStmt");
     indentLevel++;
-    advance(); // type
+
+    string typeName = current().value;  // type
+    advance();
+
+    Token varTok = current();
     expect(IDENTIFIER, "variable name");
+
+    // DECLARE VARIABLE — semantics
+    semantics.declareVariable(varTok.value, typeName, varTok);
+
     expect(OPERATOR, "=");
     Expression();
     expect(SYMBOL, ";");
@@ -150,7 +186,13 @@ void Parser::DeclarationStmt() {
 void Parser::AssignmentStmt() {
     printNode("AssignmentStmt");
     indentLevel++;
+
+    Token nameTok = current();
     advance(); // identifier
+
+    // CHECK variable exists
+    semantics.assignVariable(nameTok.value, nameTok);
+
     expect(OPERATOR, "=");
     Expression();
     expect(SYMBOL, ";");
@@ -186,43 +228,82 @@ void Parser::LoopStmt() {
 void Parser::OutputStmt() {
     printNode("OutputStmt");
     indentLevel++;
+
+    Token fnTok = current();
     advance();
+
     Expression();
+
     expect(SYMBOL, ";");
+
     indentLevel--;
 }
 
 void Parser::InputStmt() {
     printNode("InputStmt");
     indentLevel++;
+
     advance();
     expect(IDENTIFIER, "variable name");
     expect(SYMBOL, ";");
+
     indentLevel--;
 }
 
 void Parser::ReturnStmt() {
     printNode("ReturnStmt");
     indentLevel++;
+
     advance();
     Expression();
     expect(SYMBOL, ";");
+
     indentLevel--;
 }
 
 void Parser::Expression() {
     printNode("Expression");
     indentLevel++;
+
     Term();
-    while (current().type == OPERATOR &&
-        (current().value == "+" || current().value == "-" ||
-            current().value == "<" || current().value == ">" ||
+
+    // detect the FIRST relational operator
+    if (current().type == OPERATOR &&
+        (current().value == "<" || current().value == ">" ||
             current().value == "==" || current().value == "!=")) {
+
+        string op = current().value;
+        printNode("Op: " + op);
+        advance();
+        Term();
+
+        // ❗❗ Check for a SECOND relational op (illegal)
+        if (current().type == OPERATOR &&
+            (current().value == "<" || current().value == ">" ||
+                current().value == "==" || current().value == "!=")) {
+
+            error("Invalid chained comparison: multiple relational operators");
+            // skip tokens until ) or ;
+            while (current().value != ")" &&
+                current().value != ";" &&
+                current().type != END_OF_FILE) {
+                advance();
+            }
+        }
+    }
+
+    // allow normal + and - after comparisons
+    while (current().type == OPERATOR &&
+        (current().value == "+" || current().value == "-")) {
+
+        printNode("Op: " + current().value);
         advance();
         Term();
     }
+
     indentLevel--;
 }
+
 
 void Parser::Term() {
     printNode("Term");
