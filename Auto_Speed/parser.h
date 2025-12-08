@@ -1,19 +1,19 @@
-#pragma once
+﻿#pragma once
 #include "scanner.h"
+#include "semantics.h"   // ✅ ADDED
 #include <string>
 #include <vector>
 
 using namespace std;
 
-/*
- * Parser with parse tree printing and error handling
- */
 class Parser {
 private:
     vector<Token> tokens;
     size_t pos = 0;
     int indentLevel = 0;
     bool hasError = false;
+
+    SemanticAnalyzer semantics;   // ✅ ADDED
 
     // Helpers
     Token current();
@@ -46,4 +46,8 @@ private:
 public:
     explicit Parser(const vector<Token>& t);
     void parse();
+
+    bool semanticErrors() const {
+        return semantics.hasErrors();
+    }  // ✅ ADDED
 };

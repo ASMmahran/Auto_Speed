@@ -1,4 +1,4 @@
-#include "scanner.h"
+﻿#include "scanner.h"
 #include "parser.h"
 #include <iostream>
 using namespace std;
@@ -10,13 +10,14 @@ int main() {
 
         ignite() {
             gear fuel = 20;
-            track (fuel < 30) {
+            track (X>5<3) {
                 announce "Low fuel!";
             }
             pitstop {
                 announce "Refueling...";
-            }
+            
             finishline 0;
+            }
         }
     )";
 
