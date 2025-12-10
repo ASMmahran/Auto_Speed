@@ -5,20 +5,15 @@ using namespace std;
 
 int main() {
     string code = R"(
-        #oil <speed>
-        key racetrack
+ignite() {
+    {
+        gear x = 5;
+        announce x;
+    }
+    announce x;
+    finishline 0;
+}
 
-        ignite() {
-            gear fuel = 20;
-            track (X>5<3) {
-                announce "Low fuel!";
-            }
-            pitstop {
-                announce "Refueling...";
-            
-            finishline 0;
-            }
-        }
     )";
 
     vector<Token> tokens = scan(code);

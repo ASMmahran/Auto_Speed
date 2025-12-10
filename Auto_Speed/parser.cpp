@@ -6,7 +6,7 @@ using namespace std;
 // ============= Utility functions =============
 Parser::Parser(const vector<Token>& t)
     : tokens(t), pos(0), semantics() {
-}   // ✅ semantic initialized
+}   // semantic initialized
 
 Token Parser::current() {
     if (pos >= tokens.size()) return { END_OF_FILE, "EOF", -1 };
@@ -128,8 +128,17 @@ void Parser::Function() {
 void Parser::Block() {
     printNode("Block");
     indentLevel++;
+
     expect(SYMBOL, "{");
+
+    // ENTER SCOPE for this block
+    semantics.enterScope();
+
     StatementList();
+
+    // LEAVE SCOPE after finishing statements
+    semantics.leaveScope();
+
     expect(SYMBOL, "}");
     indentLevel--;
 }

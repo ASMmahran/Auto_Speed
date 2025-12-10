@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include "scanner.h"
-#include "semantics.h"   // ✅ ADDED
+#include "semantics.h"   
 #include <string>
 #include <vector>
 
@@ -13,7 +13,7 @@ private:
     int indentLevel = 0;
     bool hasError = false;
 
-    SemanticAnalyzer semantics;   // ✅ ADDED
+    SemanticAnalyzer semantics;   
 
     // Helpers
     Token current();
@@ -49,5 +49,5 @@ public:
 
     bool semanticErrors() const {
         return semantics.hasErrors();
-    }  // ✅ ADDED
+    }  
 };
